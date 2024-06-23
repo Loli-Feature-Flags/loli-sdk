@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig-base.json",
+  "compilerOptions": {},
+  "include": [
+    "./test-utils/**/*",
+    "./reset.d.ts",
+    "./src/**/*",
+    "./tests/**/*",
+    "./reset.d.ts"
+  ],
+  "exclude": ["node_modules", "./dist/**/*"]
+}

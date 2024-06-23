@@ -1,0 +1,28 @@
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "target": "ES2015",
+    "module": "esnext",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+
+    "rootDir": ".",
+    "declaration": true,
+    "removeComments": true,
+    "emitBOM": true,
+    "forceConsistentCasingInFileNames": true,
+
+    "strict": true,
+    "skipLibCheck": true,
+    "noImplicitAny": true,
+    "noImplicitThis": true,
+    "noUnusedLocals": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+
+    "baseUrl": "."
+  },
+  "include": ["./src/**/*", "./tests/**/*", "./reset.d.ts"],
+  "exclude": ["node_modules", "./dist/**/*"]
+}

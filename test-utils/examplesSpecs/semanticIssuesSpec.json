@@ -1,0 +1,188 @@
+{
+  "schemaVersion": 1,
+  "featureFlags": [
+    {
+      "id": "darkModeFeatureFlagId",
+      "name": "dark-mode",
+      "type": "boolean",
+      "defaultValue": false,
+      "description": "",
+      "targeting": {
+        "enabled": true,
+        "rules": [
+          {
+            "enabled": true,
+            "valuesOnMatch": [
+              {
+                "value": true,
+                "rolloutPercentage": 100
+              }
+            ],
+            "conditionSet": {
+              "operator": "or",
+              "conditions": [
+                {
+                  "type": "segment",
+                  "segmentId": "earlyAdoptersSegmentId",
+                  "operator": "isTrue"
+                },
+                {
+                  "type": "string",
+                  "propertyId": "emailPropId",
+                  "operator": "equals",
+                  "operandsQuantifier": "some",
+                  "operands": [
+                    "ceo@acme.com"
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "someOtherFeatureFlag",
+      "name": "dark-mode",
+      "type": "boolean",
+      "defaultValue": false,
+      "description": "",
+      "targeting": {
+        "enabled": true,
+        "rules": [
+          {
+            "enabled": true,
+            "valuesOnMatch": [
+              {
+                "value": true,
+                "rolloutPercentage": 55
+              }
+            ],
+            "conditionSet": {
+              "operator": "and",
+              "conditions": [
+                {
+                  "type": "boolean",
+                  "propertyId": "nonExistingBooleanPropertyId",
+                  "operator": "isTrue"
+                },
+                {
+                  "type": "segment",
+                  "segmentId": "nonExistingSegmentId",
+                  "operator": "isTrue"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "segments": [
+    {
+      "id": "earlyAdoptersSegmentId",
+      "name": "early-adopters",
+      "conditionSet": {
+        "operator": "or",
+        "conditions": [
+          {
+            "type": "boolean",
+            "propertyId": "betaTesterPropId",
+            "operator": "isTrue"
+          },
+          {
+            "type": "string",
+            "propertyId": "emailPropId",
+            "operator": "endsWith",
+            "operandsQuantifier": "some",
+            "operands": [
+              "@acme.com"
+            ]
+          },
+          {
+            "type": "segment",
+            "segmentId": "superAdminsSegmentId",
+            "operator": "isTrue"
+          },
+          {
+            "type": "string",
+            "propertyId": "8a7s6d986asd98as6da",
+            "operator": "endsWith",
+            "operandsQuantifier": "some",
+            "operands": [
+              "@acme.com"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "superAdminsSegmentId",
+      "name": "super-admins",
+      "conditionSet": {
+        "operator": "and",
+        "conditions": [
+          {
+            "type": "boolean",
+            "propertyId": "emailPropId",
+            "operator": "isTrue"
+          },
+          {
+            "type": "segment",
+            "segmentId": "earlyAdoptersSegmentId",
+            "operator": "isTrue"
+          }
+        ]
+      }
+    }
+  ],
+  "evaluationContext": {
+    "properties": [
+      {
+        "type": "string",
+        "id": "emailPropId",
+        "name": "User E-Mail",
+        "path": [
+          "email"
+        ],
+        "rolloutDiscriminator": true
+      },
+      {
+        "type": "string",
+        "id": "idPropId",
+        "name": "User ID",
+        "path": [
+          "id"
+        ],
+        "rolloutDiscriminator": true
+      },
+      {
+        "type": "boolean",
+        "id": "betaTesterPropId",
+        "name": "Beta Tester Flag",
+        "path": [
+          "betaTester"
+        ],
+        "rolloutDiscriminator": false
+      },
+      {
+        "type": "boolean",
+        "id": "superAdminPropId",
+        "name": "Super Admin Flag",
+        "path": [
+          "superAdmin"
+        ],
+        "rolloutDiscriminator": false
+      },
+      {
+        "type": "boolean",
+        "id": "superAdminPropId",
+        "name": "Super Admin Flag 2",
+        "path": [
+          "superAdmin"
+        ],
+        "rolloutDiscriminator": false
+      }
+    ]
+  }
+}

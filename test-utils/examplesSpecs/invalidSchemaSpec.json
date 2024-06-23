@@ -1,0 +1,181 @@
+{
+  "schemaVersion": 1,
+  "featureFlags": [
+    {
+      "id": "y3ck69o1",
+      "name": "ai-pilot",
+      "description": "",
+      "type": "boolean",
+      "defaultValue": false
+    },
+    {
+      "id": "np1notuu",
+      "name": "dark-mode",
+      "targeting": {
+        "enabled": true,
+        "rules": [
+          {
+            "conditionSet": {
+              "operator": "and",
+              "conditions": [
+                {
+                  "type": "segment",
+                  "segmentId": "aknd4fpn",
+                  "operator": "isTrue"
+                },
+                {
+                  "type": "segment",
+                  "segmentId": "vhfepz7m",
+                  "operator": "isTrue"
+                }
+              ]
+            },
+            "valuesOnMatch": [
+              {
+                "value": true,
+                "rolloutPercentage": 100
+              }
+            ]
+          }
+        ]
+      },
+      "defaultValue": false
+    },
+    {
+      "id": "fnef7uf3",
+      "name": "top-banner",
+      "description": "",
+      "type": "string",
+      "targeting": {
+        "enabled": true,
+        "rules": [
+          {
+            "conditionSet": {
+              "operator": "and",
+              "conditions": [
+                {
+                  "type": "segment",
+                  "segmentId": "j0hzig58",
+                  "operator": "isTrue"
+                }
+              ]
+            },
+            "valuesOnMatch": [
+              {
+                "value": "pitch-limited-editions",
+                "rolloutPercentage": 100
+              }
+            ]
+          },
+          {
+            "conditionSet": {
+              "operator": "and",
+              "conditions": [
+                {
+                  "type": "segment",
+                  "segmentId": "vhfepz7m",
+                  "operator": "isTrue"
+                }
+              ]
+            },
+            "valuesOnMatch": [
+              {
+                "value": "most-liked-product",
+                "rolloutPercentage": 100
+              }
+            ]
+          }
+        ]
+      },
+      "defaultValue": "latest-product"
+    }
+  ],
+  "segments": [
+    {
+      "id": "vhfepz7m",
+      "name": "beta-testers",
+      "conditionSet": {
+        "operator": "and",
+        "conditions": [
+          {
+            "type": "stringArray",
+            "propertyId": "gd7y1edz",
+            "propertyArrayQuantifier": "some",
+            "operator": "equals",
+            "operandsQuantifier": "some",
+            "operands": [
+              "betaTester"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "j0hzig58",
+      "name": "highest-paying-customers",
+      "conditionSet": {
+        "operator": "and",
+        "conditions": [
+          {
+            "type": "string",
+            "propertyId": "muruiu60",
+            "operator": "equals",
+            "operandsQuantifier": "unknownOperator",
+            "operands": [
+              "enterprise-monthly",
+              "enterprise-yearly",
+              "legacy-enterprise-monthly",
+              "legacy-enterprise-yearly",
+              "legacy-early-adoptor-plan"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "aknd4fpn",
+      "name": "internal-users",
+      "conditionSet": {
+        "operator": "and",
+        "conditions": [
+          {
+            "type": "string",
+            "propertyId": "jbds89t6",
+            "operator": "endsWith",
+            "operandsQuantifier": "some",
+            "operands": []
+          }
+        ]
+      }
+    }
+  ],
+  "evaluationContext": {
+    "properties": [
+      {
+        "id": "jbds89t6",
+        "path": [
+          "email"
+        ],
+        "name": "User E-Email 2",
+        "type": "string",
+        "rolloutDiscriminator": true
+      },
+      {
+        "id": "gd7y1edz",
+        "path": [
+          "settingsFlags"
+        ],
+        "name": "User Settings Flags",
+        "type": "stringArray",
+        "rolloutDiscriminator": 123123123
+      },
+      {
+        "id": "muruiu60",
+        "path": [
+          "subscriptionPlanId"
+        ],
+        "name": "User Subscription Plan ID"
+      }
+    ]
+  }
+}
