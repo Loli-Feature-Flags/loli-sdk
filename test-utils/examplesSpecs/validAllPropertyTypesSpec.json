@@ -74,63 +74,42 @@
     "properties": [
       {
         "id": "llnsvtd5",
-        "path": [
-          "string",
-          "property"
-        ],
+        "path": ["string", "property"],
         "name": "String Property",
         "type": "string",
         "rolloutDiscriminator": true
       },
       {
         "id": "ue0iix9m",
-        "path": [
-          "string",
-          "array",
-          "property"
-        ],
+        "path": ["string", "array", "property"],
         "name": "String Array Property",
         "type": "stringArray",
         "rolloutDiscriminator": true
       },
       {
         "id": "z420hbv6",
-        "path": [
-          "number",
-          "property"
-        ],
+        "path": ["number", "property"],
         "name": "Number Property",
         "type": "number",
         "rolloutDiscriminator": true
       },
       {
         "id": "m899hgx7",
-        "path": [
-          "number",
-          "array",
-          "property"
-        ],
+        "path": ["number", "array", "property"],
         "name": "Number Array Property",
         "type": "numberArray",
         "rolloutDiscriminator": true
       },
       {
         "id": "mfq8tild",
-        "path": [
-          "boolean",
-          "property"
-        ],
+        "path": ["boolean", "property"],
         "name": "Boolean Property",
         "type": "boolean",
         "rolloutDiscriminator": false
       },
       {
         "id": "ly77wcov",
-        "path": [
-          "boolean",
-          "array",
-          "property"
-        ],
+        "path": ["boolean", "array", "property"],
         "name": "Boolean Array Property",
         "type": "booleanArray",
         "rolloutDiscriminator": true

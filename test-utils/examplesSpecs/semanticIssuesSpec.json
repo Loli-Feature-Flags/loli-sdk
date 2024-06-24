@@ -31,9 +31,7 @@
                   "propertyId": "emailPropId",
                   "operator": "equals",
                   "operandsQuantifier": "some",
-                  "operands": [
-                    "ceo@acme.com"
-                  ]
+                  "operands": ["ceo@acme.com"]
                 }
               ]
             }
@@ -95,9 +93,7 @@
             "propertyId": "emailPropId",
             "operator": "endsWith",
             "operandsQuantifier": "some",
-            "operands": [
-              "@acme.com"
-            ]
+            "operands": ["@acme.com"]
           },
           {
             "type": "segment",
@@ -109,9 +105,7 @@
             "propertyId": "8a7s6d986asd98as6da",
             "operator": "endsWith",
             "operandsQuantifier": "some",
-            "operands": [
-              "@acme.com"
-            ]
+            "operands": ["@acme.com"]
           }
         ]
       }
@@ -142,45 +136,35 @@
         "type": "string",
         "id": "emailPropId",
         "name": "User E-Mail",
-        "path": [
-          "email"
-        ],
+        "path": ["email"],
         "rolloutDiscriminator": true
       },
       {
         "type": "string",
         "id": "idPropId",
         "name": "User ID",
-        "path": [
-          "id"
-        ],
+        "path": ["id"],
         "rolloutDiscriminator": true
       },
       {
         "type": "boolean",
         "id": "betaTesterPropId",
         "name": "Beta Tester Flag",
-        "path": [
-          "betaTester"
-        ],
+        "path": ["betaTester"],
         "rolloutDiscriminator": false
       },
       {
         "type": "boolean",
         "id": "superAdminPropId",
         "name": "Super Admin Flag",
-        "path": [
-          "superAdmin"
-        ],
+        "path": ["superAdmin"],
         "rolloutDiscriminator": false
       },
       {
         "type": "boolean",
         "id": "superAdminPropId",
         "name": "Super Admin Flag 2",
-        "path": [
-          "superAdmin"
-        ],
+        "path": ["superAdmin"],
         "rolloutDiscriminator": false
       }
     ]

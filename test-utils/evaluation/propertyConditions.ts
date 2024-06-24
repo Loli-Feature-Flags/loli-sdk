@@ -20,7 +20,7 @@ export type PropertyConditionOperatorTestCaseRecordBase<
   expected: boolean;
 } & (CONDITION extends { operands: Array<infer AV> }
   ? { operands: Array<AV> }
-  : {});
+  : object);
 
 export type PropertyConditionOperatorTestCaseRecord<
   CONDITION extends PropertyCondition,
@@ -32,14 +32,14 @@ export type PropertyConditionOperatorTestCaseRecord<
     ? {
         propertyArrayQuantifier: Quantifier;
       }
-    : {}) &
+    : object) &
   (CONDITION extends {
     operandsQuantifier: Quantifier;
   }
     ? {
         operandsQuantifier: Quantifier;
       }
-    : {});
+    : object);
 
 export type PropertyConditionOperatorTestCases<
   CONDITION extends PropertyCondition,
@@ -61,17 +61,17 @@ export type OperatorTestCreateConditionProps<
   ? {
       propertyArrayQuantifier: Quantifier;
     }
-  : {}) &
+  : object) &
   (CONDITION extends {
     operandsQuantifier: Quantifier;
   }
     ? {
         operandsQuantifier: Quantifier;
       }
-    : {}) &
+    : object) &
   (CONDITION extends { operands: Array<infer AV> }
     ? { operands: Array<AV> }
-    : {});
+    : object);
 
 export type ExecuteConditionTestsProps<
   CONDITION extends PropertyCondition,

@@ -103,9 +103,7 @@
             "propertyArrayQuantifier": "some",
             "operator": "equals",
             "operandsQuantifier": "some",
-            "operands": [
-              "betaTester"
-            ]
+            "operands": ["betaTester"]
           }
         ]
       }
@@ -153,27 +151,21 @@
     "properties": [
       {
         "id": "jbds89t6",
-        "path": [
-          "email"
-        ],
+        "path": ["email"],
         "name": "User E-Email 2",
         "type": "string",
         "rolloutDiscriminator": true
       },
       {
         "id": "gd7y1edz",
-        "path": [
-          "settingsFlags"
-        ],
+        "path": ["settingsFlags"],
         "name": "User Settings Flags",
         "type": "stringArray",
         "rolloutDiscriminator": 123123123
       },
       {
         "id": "muruiu60",
-        "path": [
-          "subscriptionPlanId"
-        ],
+        "path": ["subscriptionPlanId"],
         "name": "User Subscription Plan ID"
       }
     ]

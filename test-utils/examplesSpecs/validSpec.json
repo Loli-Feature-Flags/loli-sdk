@@ -187,9 +187,7 @@
             "propertyArrayQuantifier": "some",
             "operator": "equals",
             "operandsQuantifier": "some",
-            "operands": [
-              "betaTester"
-            ]
+            "operands": ["betaTester"]
           }
         ]
       }
@@ -227,9 +225,7 @@
             "propertyId": "jbds89t6",
             "operator": "endsWith",
             "operandsQuantifier": "some",
-            "operands": [
-              "@acme.com"
-            ]
+            "operands": ["@acme.com"]
           }
         ]
       }
@@ -239,27 +235,21 @@
     "properties": [
       {
         "id": "jbds89t6",
-        "path": [
-          "email"
-        ],
+        "path": ["email"],
         "name": "User E-Email",
         "type": "string",
         "rolloutDiscriminator": true
       },
       {
         "id": "gd7y1edz",
-        "path": [
-          "settingsFlags"
-        ],
+        "path": ["settingsFlags"],
         "name": "User Settings Flags",
         "type": "stringArray",
         "rolloutDiscriminator": false
       },
       {
         "id": "muruiu60",
-        "path": [
-          "subscriptionPlanId"
-        ],
+        "path": ["subscriptionPlanId"],
         "name": "User Subscription Plan ID",
         "type": "string",
         "rolloutDiscriminator": false
