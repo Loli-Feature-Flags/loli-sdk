@@ -1,5 +1,5 @@
 {
-  "name": "@loli-feature-flags/loli-sdk-js",
+  "name": "@loli-feature-flags/loli-sdk",
   "version": "1.0.0-alpha.0",
   "keywords": [
     "featureflags",
@@ -14,7 +14,7 @@
   "description": "Loli Feature Flags JavaScript/TypeScript SDK",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Loli-Feature-Flags/loli-sdk-js"
+    "url": "https://github.com/Loli-Feature-Flags/loli-sdk"
   },
   "publishConfig": {
     "access": "public"
