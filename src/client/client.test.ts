@@ -882,7 +882,7 @@ describe("LoliClient", () => {
       expect(loadedCounter).toBe(1);
     });
 
-    test("evaluation calls are not blocked by new loading attempts after there has been an initial failed attempt", async () => {
+    test("evaluation calls are not blocked by new loading attempts after there has been an initial failed attempt if specReloadBlockingWaitMilliseconds = zero", async () => {
       let loaderFailureCounter = 0;
 
       const client = new LoliClient(
@@ -890,7 +890,7 @@ describe("LoliClient", () => {
           new Promise((_, reject) =>
             setTimeout(reject, 500, new Error("error 55")),
           ),
-        { specLoaderMaxRetries: 0 },
+        { specLoaderMaxRetries: 0, specReloadMaxBlockingWaitMilliseconds: 0 },
         {
           specLoaderFailure: () => {
             loaderFailureCounter++;
@@ -915,6 +915,52 @@ describe("LoliClient", () => {
       await wait(520);
       expect(loaderFailureCounter).toBe(2);
     });
+
+    test("evaluation call caused reloads wait for a max time based on specReloadBlockingWaitMilliseconds", async () => {
+      let loaderFailureCounter = 0;
+      let loaderWait = 500;
+
+      const client = new LoliClient(
+        () =>
+          new Promise((_, reject) =>
+            setTimeout(reject, loaderWait, new Error("error 55")),
+          ),
+        { specLoaderMaxRetries: 0, specReloadMaxBlockingWaitMilliseconds: 800 },
+        {
+          specLoaderFailure: () => {
+            loaderFailureCounter++;
+          },
+        },
+      );
+
+      await client.waitForFirstLoadToFinish();
+      await wait(1);
+      expect(loaderFailureCounter).toBe(1);
+
+      // Waits for loader to finish if faster than specReloadBlockingWaitMilliseconds
+      const start = Date.now();
+      await client.evaluateBooleanFeatureFlag("ai-pilot", {});
+      const end = Date.now();
+
+      expect(end - start).toBeGreaterThanOrEqual(500);
+      await wait(1);
+      expect(loaderFailureCounter).toBe(2);
+
+      // Wait max. for specReloadBlockingWaitMilliseconds and returns early
+      loaderWait = 1200;
+
+      const start2 = Date.now();
+      await client.evaluateBooleanFeatureFlag("ai-pilot", {});
+      const end2 = Date.now();
+
+      expect(end2 - start2).toBeLessThanOrEqual(1150);
+      await wait(1);
+      expect(loaderFailureCounter).toBe(2); // stayed at 2 from previous wait
+
+      // Loader still finishes and callback gets called
+      await wait(loaderWait - (end2 - start2) + 200);
+      expect(loaderFailureCounter).toBe(3);
+    }, 10000);
   });
 
   const testCases: {

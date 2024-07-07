@@ -28,8 +28,9 @@ export function createDefaultLoliClientOptions(): Readonly<
   return Object.freeze({
     specLoaderTimeoutMilliseconds: 15000, // 15s
     specLoaderMaxRetries: 5,
-    specLoaderFailureRetryDelayMilliseconds: 2500, // 1,5s
+    specLoaderFailureRetryDelayMilliseconds: 2500, // 2,5s
     specCacheStaleTimeMilliseconds: 15000, // 15s
+    specReloadMaxBlockingWaitMilliseconds: 1500, // 1,5s
     disableInitialSpecLoadOnCreation: false,
     emergencyFallbacksByFeatureFlagName: {},
     emergencyFallbacksByDataType: {
@@ -162,7 +163,7 @@ export class LoliClient {
    *
    * On load and validation success, the callback specLoadedAndValidated is executed, if specified.
    *
-   * @returns Returns a promise once the loading successfully finished or failed after all retries.
+   * @returns Returns a promise that resolves once the loading successfully finished or failed after all retries. The promise will never reject.
    */
   private async loadAndValidateLoliSpec(): Promise<void> {
     // Optimization: This ensures that the spec never loaded in parallel.
@@ -299,7 +300,7 @@ export class LoliClient {
    *
    * Please use the callbacks to be informed about loading failures and successes.
    */
-  async waitForFirstLoadToFinish() {
+  async waitForFirstLoadToFinish(): Promise<void> {
     if (!this.loliSpec && this.currentLoadPromise) {
       await this.currentLoadPromise;
     }
@@ -308,11 +309,15 @@ export class LoliClient {
   /**
    * Calls {@link loadAndValidateLoliSpec} using {@link setTimeout}
    * with a timeout of zero milliseconds.
+   *
+   * @returns Returns a promise that is resolved/rejected based on the promise result of {@link loadAndValidateLoliSpec}.
    */
-  triggerSpecReload() {
-    setTimeout(() => {
-      void this.loadAndValidateLoliSpec();
-    }, 0);
+  triggerSpecReload(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        this.loadAndValidateLoliSpec().then(resolve).catch(reject);
+      }, 0);
+    });
   }
 
   /**
@@ -321,15 +326,40 @@ export class LoliClient {
    *  - options.specCacheTimeToLiveMilliseconds is negative
    *  - the time elapsed between now and this.loliSpecLoadedTimestamp is greater than options.specCacheStaleTimeMilliseconds
    */
-  private triggerReloadIfNotLoadedOrCacheExpired() {
+  private triggerReloadIfNotLoadedOrCacheExpired(): Promise<void> {
     if (
       !this.loliSpecLoadedTimestamp ||
       this.options.specCacheStaleTimeMilliseconds < 0 ||
       new Date().getTime() - this.loliSpecLoadedTimestamp.getTime() >
         this.options.specCacheStaleTimeMilliseconds
     ) {
-      this.triggerSpecReload();
+      if (this.options.specReloadMaxBlockingWaitMilliseconds <= 0) {
+        void this.triggerSpecReload();
+      } else {
+        let promiseResolve: () => void = () => undefined;
+        let timedOut = false;
+
+        const promise = new Promise<void>((resolve) => {
+          promiseResolve = resolve;
+        });
+
+        const timeout = setTimeout(() => {
+          timedOut = true;
+          promiseResolve();
+        }, this.options.specReloadMaxBlockingWaitMilliseconds);
+
+        this.triggerSpecReload().then(() => {
+          if (!timedOut) {
+            clearTimeout(timeout);
+            promiseResolve();
+          }
+        });
+
+        return promise;
+      }
     }
+
+    return Promise.resolve();
   }
 
   /**
@@ -342,6 +372,11 @@ export class LoliClient {
    *  - or there already was a loading attempt that failed (in this case this method will return immediately
    *    to not block any evaluation after a first failed loading attempt)
    *
+   * This method also waits for {@link triggerReloadIfNotLoadedOrCacheExpired}. This is useful, when
+   * the option "specReloadMaxBlockingWaitMilliseconds" is >= 0ms. This way, e.g. an evaluation call
+   * will use the newest spec version in case the cached spec was stale and the loader fast faster than
+   * the specified "specReloadMaxBlockingWaitMilliseconds".
+   *
    * @returns Loaded spec or null if loading failed.
    */
   private async getLoadedSpecOrLoad(): Promise<LoliSpec | null> {
@@ -351,7 +386,7 @@ export class LoliClient {
     if (!this.loliSpec && !this.loliSpecLoadFailureTimestamp) {
       await this.loadAndValidateLoliSpec();
     } else {
-      this.triggerReloadIfNotLoadedOrCacheExpired();
+      await this.triggerReloadIfNotLoadedOrCacheExpired();
     }
 
     return this.loliSpec;

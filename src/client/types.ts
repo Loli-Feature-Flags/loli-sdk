@@ -23,6 +23,7 @@ export type LoliClientOptions = {
   specLoaderMaxRetries?: number;
   specLoaderFailureRetryDelayMilliseconds?: number;
   specCacheStaleTimeMilliseconds?: number;
+  specReloadMaxBlockingWaitMilliseconds?: number;
   disableInitialSpecLoadOnCreation?: boolean;
   emergencyFallbacksByFeatureFlagName?: LoliClientAllFeatureFlagsEvaluationResult;
   emergencyFallbacksByDataType?: LoliClientEvaluationEmergencyFallbacks;
