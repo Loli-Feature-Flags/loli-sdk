@@ -16,7 +16,7 @@ import type {
 export function dateToDateTimeConditionOperand(
   date: Date,
 ): DateTimeConditionOperand {
-  const year = date.getFullYear().toString();
+  const year = ("0000" + date.getFullYear().toString()).slice(-4);
   const month = ("00" + (date.getMonth() + 1).toString()).slice(-2);
   const day = ("00" + date.getDate().toString()).slice(-2);
 

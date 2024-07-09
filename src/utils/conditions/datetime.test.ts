@@ -61,10 +61,16 @@ describe("dateToDateTimeConditionOperand", () => {
     ).toEqual(expectedTimezoneOffset);
   });
 
-  test("Returns padded month and padded day", () => {
+  test("Returns padded year, month, and day", () => {
     expect(
-      dateToDateTimeConditionOperand(new Date("2024-01-02T09:30:15.123")).date,
-    ).toEqual("2024-01-02");
+      dateToDateTimeConditionOperand(new Date("0002-01-02T09:30:15.123")).date,
+    ).toEqual("0002-01-02");
+  });
+
+  test("Returns padded hours, minutes, and seconds", () => {
+    expect(
+      dateToDateTimeConditionOperand(new Date("2024-07-09T04:05:06.123")).time,
+    ).toEqual("04:05:06");
   });
 });
 
