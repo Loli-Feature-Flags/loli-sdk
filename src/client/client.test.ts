@@ -329,9 +329,9 @@ describe("LoliClient", () => {
             specLoaderMaxRetries: 0,
           },
           {
-            specValidationFailure: (message, loaded, cause) => {
+            specValidationFailure: (message, specLoaderResult, cause) => {
               callbackMessage = message;
-              callbackLoaded = loaded;
+              callbackLoaded = specLoaderResult;
               callbackCause = cause;
             },
           },
@@ -357,9 +357,9 @@ describe("LoliClient", () => {
             specLoaderMaxRetries: 0,
           },
           {
-            specValidationFailure: (message, loaded, cause) => {
+            specValidationFailure: (message, specLoaderResult, cause) => {
               callbackMessage = message;
-              callbackLoaded = loaded;
+              callbackLoaded = specLoaderResult;
               callbackCause = cause;
             },
           },
@@ -385,9 +385,9 @@ describe("LoliClient", () => {
             specLoaderMaxRetries: 0,
           },
           {
-            specValidationFailure: (message, loaded, cause) => {
+            specValidationFailure: (message, specLoaderResult, cause) => {
               callbackMessage = message;
-              callbackLoaded = loaded;
+              callbackLoaded = specLoaderResult;
               callbackCause = cause;
             },
           },

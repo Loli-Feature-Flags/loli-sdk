@@ -28,9 +28,9 @@ export function createDefaultLoliClientOptions(): Readonly<
   return Object.freeze({
     specLoaderTimeoutMilliseconds: 15000, // 15s
     specLoaderMaxRetries: 5,
-    specLoaderFailureRetryDelayMilliseconds: 2500, // 2,5s
+    specLoaderFailureRetryDelayMilliseconds: 2500, // 2.5s
     specCacheStaleTimeMilliseconds: 15000, // 15s
-    specReloadMaxBlockingWaitMilliseconds: 1500, // 1,5s
+    specReloadMaxBlockingWaitMilliseconds: 1500, // 1.5s
     disableInitialSpecLoadOnCreation: false,
     emergencyFallbacksByFeatureFlagName: {},
     emergencyFallbacksByDataType: {
@@ -53,8 +53,8 @@ export function createDefaultLoliClientCallbacks(): Readonly<
     specLoaderFailure: (message, cause) => {
       console.error(message, cause);
     },
-    specValidationFailure: (message, loaded, casue) => {
-      console.error(message, loaded, casue);
+    specValidationFailure: (message, specLoaderResult, casue) => {
+      console.error(message, specLoaderResult, casue);
     },
     emergencyFallbackUsed: (message, cause) => {
       console.error(message, cause);
