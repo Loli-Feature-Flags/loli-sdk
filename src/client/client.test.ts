@@ -102,7 +102,7 @@ describe("LoliClient", () => {
         },
       );
 
-      await client.waitForFirstLoadToFinish();
+      await client.waitForFirstSpecLoadToFinish();
       await wait(1);
 
       expect(loliSpec).toBeTruthy();
@@ -122,7 +122,7 @@ describe("LoliClient", () => {
         },
       );
 
-      await client.waitForFirstLoadToFinish();
+      await client.waitForFirstSpecLoadToFinish();
       await wait(1);
 
       expect(loliSpec).toBeTruthy();
@@ -142,7 +142,7 @@ describe("LoliClient", () => {
         },
       );
 
-      await client.waitForFirstLoadToFinish();
+      await client.waitForFirstSpecLoadToFinish();
       await wait(1);
 
       expect(loliSpec).toBeNull();
@@ -175,7 +175,7 @@ describe("LoliClient", () => {
         { specLoaderMaxRetries: 0 },
       );
 
-      await client.waitForFirstLoadToFinish();
+      await client.waitForFirstSpecLoadToFinish();
       await wait(1);
 
       expect(consoleErrorMock).toHaveBeenCalledTimes(1);
@@ -187,7 +187,7 @@ describe("LoliClient", () => {
         specLoaderMaxRetries: 0,
       });
 
-      await client.waitForFirstLoadToFinish();
+      await client.waitForFirstSpecLoadToFinish();
       await wait(1);
 
       expect(consoleErrorMock).toHaveBeenCalledTimes(1);
@@ -201,7 +201,7 @@ describe("LoliClient", () => {
         specLoaderMaxRetries: 0,
       });
 
-      await client.waitForFirstLoadToFinish();
+      await client.waitForFirstSpecLoadToFinish();
 
       await client.evaluateBooleanFeatureFlag("non-existing-feature-flag", {});
       await wait(1);
@@ -215,7 +215,7 @@ describe("LoliClient", () => {
         specLoaderMaxRetries: 0,
       });
 
-      await client.waitForFirstLoadToFinish();
+      await client.waitForFirstSpecLoadToFinish();
 
       await client.evaluateBooleanFeatureFlag("ai-pilot", {
         // email: "test@acme.com", // this will cause a property-value-not-found warning
@@ -252,7 +252,7 @@ describe("LoliClient", () => {
           },
         );
 
-        await client.waitForFirstLoadToFinish();
+        await client.waitForFirstSpecLoadToFinish();
 
         await wait(1);
 
@@ -279,7 +279,7 @@ describe("LoliClient", () => {
           },
         );
 
-        await client.waitForFirstLoadToFinish();
+        await client.waitForFirstSpecLoadToFinish();
 
         await wait(1);
 
@@ -306,7 +306,7 @@ describe("LoliClient", () => {
           },
         );
 
-        await client.waitForFirstLoadToFinish();
+        await client.waitForFirstSpecLoadToFinish();
 
         await wait(1);
 
@@ -337,7 +337,7 @@ describe("LoliClient", () => {
           },
         );
 
-        await client.waitForFirstLoadToFinish();
+        await client.waitForFirstSpecLoadToFinish();
         await wait(1);
 
         expect(callbackMessage).toBeTruthy();
@@ -365,7 +365,7 @@ describe("LoliClient", () => {
           },
         );
 
-        await client.waitForFirstLoadToFinish();
+        await client.waitForFirstSpecLoadToFinish();
         await wait(1);
 
         expect(callbackMessage).toBeTruthy();
@@ -393,7 +393,7 @@ describe("LoliClient", () => {
           },
         );
 
-        await client.waitForFirstLoadToFinish();
+        await client.waitForFirstSpecLoadToFinish();
         await wait(1);
 
         expect(callbackMessage).toBeTruthy();
@@ -417,7 +417,7 @@ describe("LoliClient", () => {
           },
         );
 
-        await client.waitForFirstLoadToFinish();
+        await client.waitForFirstSpecLoadToFinish();
         await wait(1);
 
         expect(JSON.stringify(callbackSepc)).toBe(validSpecStringified);
@@ -463,7 +463,7 @@ describe("LoliClient", () => {
           },
         );
 
-        await client.waitForFirstLoadToFinish();
+        await client.waitForFirstSpecLoadToFinish();
         await wait(1);
 
         expect(callbackCount).toBe(1);
@@ -495,7 +495,7 @@ describe("LoliClient", () => {
           },
         );
 
-        await client.waitForFirstLoadToFinish();
+        await client.waitForFirstSpecLoadToFinish();
         await wait(1);
 
         expect(callbackCount).toBe(1);
@@ -525,7 +525,7 @@ describe("LoliClient", () => {
           },
         );
 
-        await client.waitForFirstLoadToFinish();
+        await client.waitForFirstSpecLoadToFinish();
         await wait(1);
 
         expect(callbackCount).toBe(1);
@@ -558,7 +558,7 @@ describe("LoliClient", () => {
           },
         );
 
-        await client.waitForFirstLoadToFinish();
+        await client.waitForFirstSpecLoadToFinish();
 
         expect(callbackCalled).toBe(false);
 
@@ -582,7 +582,7 @@ describe("LoliClient", () => {
           },
         );
 
-        await client.waitForFirstLoadToFinish();
+        await client.waitForFirstSpecLoadToFinish();
         expect(callbackCalled).toBe(true);
       });
     });
@@ -608,7 +608,7 @@ describe("LoliClient", () => {
           },
         );
 
-        await client.waitForFirstLoadToFinish();
+        await client.waitForFirstSpecLoadToFinish();
         await wait(1);
 
         expect(loaderCounter).toBe(1);
@@ -641,7 +641,7 @@ describe("LoliClient", () => {
           },
         );
 
-        await client.waitForFirstLoadToFinish();
+        await client.waitForFirstSpecLoadToFinish();
         await wait(1);
 
         expect(loaderCounter).toBe(6);
@@ -676,7 +676,7 @@ describe("LoliClient", () => {
           },
         );
 
-        await client.waitForFirstLoadToFinish();
+        await client.waitForFirstSpecLoadToFinish();
         await wait(1);
 
         expect(loaderCounter).toBe(3);
@@ -713,7 +713,7 @@ describe("LoliClient", () => {
           },
         );
 
-        await client.waitForFirstLoadToFinish();
+        await client.waitForFirstSpecLoadToFinish();
         await wait(1);
 
         expect(loaderCounter).toBe(3);
@@ -751,7 +751,7 @@ describe("LoliClient", () => {
           },
         );
 
-        await client.waitForFirstLoadToFinish();
+        await client.waitForFirstSpecLoadToFinish();
         await wait(1);
 
         expect(loliSpec).toEqual(validSpec);
@@ -781,7 +781,7 @@ describe("LoliClient", () => {
           },
         );
 
-        await client.waitForFirstLoadToFinish();
+        await client.waitForFirstSpecLoadToFinish();
         await wait(1);
 
         expect(loliSpec).toBeNull();
@@ -803,7 +803,7 @@ describe("LoliClient", () => {
           },
         );
 
-        await client.waitForFirstLoadToFinish();
+        await client.waitForFirstSpecLoadToFinish();
         await wait(1);
         expect(loaderCounter).toBe(1);
 
@@ -848,7 +848,7 @@ describe("LoliClient", () => {
         },
       );
 
-      await client.waitForFirstLoadToFinish();
+      await client.waitForFirstSpecLoadToFinish();
       await wait(1);
       expect(loadedCounter).toBe(0);
 
@@ -898,7 +898,7 @@ describe("LoliClient", () => {
         },
       );
 
-      await client.waitForFirstLoadToFinish();
+      await client.waitForFirstSpecLoadToFinish();
       await wait(1);
       expect(loaderFailureCounter).toBe(1);
 
@@ -933,7 +933,7 @@ describe("LoliClient", () => {
         },
       );
 
-      await client.waitForFirstLoadToFinish();
+      await client.waitForFirstSpecLoadToFinish();
       await wait(1);
       expect(loaderFailureCounter).toBe(1);
 

@@ -300,17 +300,20 @@ export class LoliClient {
    *
    * Please use the callbacks to be informed about loading failures and successes.
    */
-  async waitForFirstLoadToFinish(): Promise<void> {
+  async waitForFirstSpecLoadToFinish(): Promise<void> {
     if (!this.loliSpec && this.currentLoadPromise) {
       await this.currentLoadPromise;
     }
   }
 
   /**
-   * Calls {@link loadAndValidateLoliSpec} using {@link setTimeout}
-   * with a timeout of zero milliseconds.
+   * Triggers a (re)load of the specification using the spec loader
+   * internally.
    *
-   * @returns Returns a promise that is resolved/rejected based on the promise result of {@link loadAndValidateLoliSpec}.
+   * Kicks off a call to {@link loadAndValidateLoliSpec} using
+   * {@link setTimeout} with a timeout of zero milliseconds.
+   *
+   * @returns Returns a promise that resolves when the internal load attempt with the spec loader finishes/fails. The promise will never reject.
    */
   triggerSpecReload(): Promise<void> {
     return new Promise((resolve, reject) => {
