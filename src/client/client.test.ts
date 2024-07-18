@@ -23,15 +23,19 @@ import { createDefaultLoliClientOptions, LoliClient } from "./client";
 import type { LoliClientSpecLoader } from "./types";
 
 const invalidSchemaSpecStringified = JSON.stringify(invalidSchemaSpec);
+
 const semanticIssuesSpecStringified = JSON.stringify(semanticIssuesSpec);
+
 const validSpecStringified = JSON.stringify(validSpec);
 
-const invalidSchemaSpecLoader: LoliClientSpecLoader = () =>
-  Promise.resolve(invalidSchemaSpecStringified);
-const semanticIssuesSpecLoader: LoliClientSpecLoader = () =>
-  Promise.resolve(semanticIssuesSpecStringified);
-const validSpecLoader: LoliClientSpecLoader = () =>
-  Promise.resolve(validSpecStringified);
+const invalidSchemaSpecLoader: LoliClientSpecLoader = (processor) =>
+  Promise.resolve(processor(invalidSchemaSpecStringified));
+
+const semanticIssuesSpecLoader: LoliClientSpecLoader = (processor) =>
+  Promise.resolve(processor(semanticIssuesSpecStringified));
+
+const validSpecLoader: LoliClientSpecLoader = (processor) =>
+  Promise.resolve(processor(validSpecStringified));
 
 describe("createDefaultLoliClientOptions", () => {
   test("returns object with specLoaderTimeoutMilliseconds = 15s", () => {
@@ -88,7 +92,7 @@ describe("createDefaultLoliClientOptions", () => {
 });
 
 describe("LoliClient", () => {
-  describe("Constructor", () => {
+  describe("constructor", () => {
     test("triggers the initial load with default settings and string loader", async () => {
       let loliSpec: LoliSpec | null = null;
 
@@ -113,7 +117,7 @@ describe("LoliClient", () => {
       let loliSpec: LoliSpec | null = null;
 
       const client = new LoliClient(
-        () => Promise.resolve(validSpec),
+        (processor) => Promise.resolve(processor(validSpec)),
         {},
         {
           specLoadedAndValidated: (loadedSpec) => {
@@ -150,7 +154,7 @@ describe("LoliClient", () => {
   });
 
   // This implicitly tests createDefaultLoliClientCallbacks()
-  describe("Default callbacks", () => {
+  describe("default callbacks", () => {
     const originalConsoleWarn: (typeof console)["warn"] = console.warn;
     const originalConsoleError: (typeof console)["error"] = console.error;
 
@@ -232,9 +236,31 @@ describe("LoliClient", () => {
         "property-value-not-found",
       );
     });
+
+    test("Default specLoaderProcessorCallbackFailure callback logs to console.error", async () => {
+      const client = new LoliClient(
+        (processor) => {
+          return processor(validSpec, {
+            receivedValidSpec: () => {
+              throw new Error("ABC123");
+            },
+          });
+        },
+        {
+          specLoaderMaxRetries: 0,
+        },
+      );
+
+      await client.waitForFirstSpecLoadToFinish();
+      await wait(1);
+
+      expect(consoleErrorMock).toHaveBeenCalledTimes(1);
+      expect(consoleErrorMock.mock.calls[0][0]).toContain("receivedValidSpec");
+      expect(consoleErrorMock.mock.calls[0][0]).toContain("ABC123");
+    });
   });
 
-  describe("Callbacks are called", () => {
+  describe("callbacks", () => {
     describe("specLoaderFailure", () => {
       test("gets called when the loader timed out", async () => {
         let loaderFailureMessage: string | null = null;
@@ -291,10 +317,7 @@ describe("LoliClient", () => {
         let loaderFailureMessage: string | null = null;
 
         const client = new LoliClient(
-          () =>
-            new Promise((resolve) => {
-              resolve(null as unknown as string);
-            }),
+          (processor) => Promise.resolve(processor(null as unknown as string)),
           {
             specLoaderTimeoutMilliseconds: 1500,
             specLoaderMaxRetries: 0,
@@ -315,6 +338,141 @@ describe("LoliClient", () => {
           "was neither a string nor an object",
         );
       });
+
+      test("gets called when the loader does not use the processor", async () => {
+        let loaderFailureMessage: string | null = null;
+
+        const client = new LoliClient(
+          () =>
+            Promise.resolve({
+              state: "valid-spec-loaded",
+              loadedAndValidatedSpec: validSpec as LoliSpec,
+            }),
+          {
+            specLoaderTimeoutMilliseconds: 1500,
+            specLoaderMaxRetries: 0,
+          },
+          {
+            specLoaderFailure: (message) => {
+              loaderFailureMessage = message;
+            },
+          },
+        );
+
+        await client.waitForFirstSpecLoadToFinish();
+
+        await wait(1);
+
+        expect(loaderFailureMessage).toBeTruthy();
+        expect(loaderFailureMessage).toContain(
+          "spec loader did not use the provided processor",
+        );
+      });
+
+      test("gets called when the loader uses the processor, but does not return its loli spec result", async () => {
+        let loaderFailureMessage: string | null = null;
+
+        const client = new LoliClient(
+          async (processor) => {
+            const processorResult = await processor(validSpec);
+
+            return {
+              ...processorResult,
+              loadedAndValidatedSpec: validSpec as LoliSpec,
+            };
+          },
+          {
+            specLoaderTimeoutMilliseconds: 1500,
+            specLoaderMaxRetries: 0,
+          },
+          {
+            specLoaderFailure: (message) => {
+              loaderFailureMessage = message;
+            },
+          },
+        );
+
+        await client.waitForFirstSpecLoadToFinish();
+
+        await wait(1);
+
+        expect(loaderFailureMessage).toBeTruthy();
+        expect(loaderFailureMessage).toContain(
+          "spec loader did not use the provided processor",
+        );
+      });
+    });
+
+    describe("specLoaderProcessorCallbackFailure", () => {
+      test("gets called when the receivedInvalidData callback fails", async () => {
+        let callbackCalled = false;
+        let callbackMessage: null | string = null;
+        let callbackCause: unknown = null;
+
+        const client = new LoliClient(
+          (processor) => {
+            return processor(invalidSchemaSpec, {
+              receivedInvalidData: () => {
+                throw new Error("TEST-1-2-3");
+              },
+            });
+          },
+          {
+            specLoaderMaxRetries: 0,
+          },
+          {
+            specLoaderProcessorCallbackFailure: (message, cause) => {
+              callbackCalled = true;
+              callbackMessage = message;
+              callbackCause = cause;
+            },
+          },
+        );
+
+        await client.waitForFirstSpecLoadToFinish();
+        await wait(1);
+
+        expect(callbackCalled).toBe(true);
+        expect(callbackMessage).toContain("receivedInvalidData");
+        expect(callbackMessage).toContain("TEST-1-2-3");
+        expect(callbackCause instanceof Error).toBe(true);
+        expect(`${callbackCause}`).toContain("TEST-1-2-3");
+      });
+
+      test("gets called when the receivedValidSpec callback fails", async () => {
+        let callbackCalled = false;
+        let callbackMessage: null | string = null;
+        let callbackCause: unknown = null;
+
+        const client = new LoliClient(
+          (processor) => {
+            return processor(validSpec, {
+              receivedValidSpec: () => {
+                throw new Error("TEST-4-5-6");
+              },
+            });
+          },
+          {
+            specLoaderMaxRetries: 0,
+          },
+          {
+            specLoaderProcessorCallbackFailure: (message, cause) => {
+              callbackCalled = true;
+              callbackMessage = message;
+              callbackCause = cause;
+            },
+          },
+        );
+
+        await client.waitForFirstSpecLoadToFinish();
+        await wait(1);
+
+        expect(callbackCalled).toBe(true);
+        expect(callbackMessage).toContain("receivedValidSpec");
+        expect(callbackMessage).toContain("TEST-4-5-6");
+        expect(callbackCause instanceof Error).toBe(true);
+        expect(`${callbackCause}`).toContain("TEST-4-5-6");
+      });
     });
 
     describe("specValidationFailure", () => {
@@ -324,7 +482,7 @@ describe("LoliClient", () => {
         let callbackCause: unknown = null;
 
         const client = new LoliClient(
-          () => Promise.resolve("{abc}"),
+          (processor) => Promise.resolve(processor("{abc}")),
           {
             specLoaderMaxRetries: 0,
           },
@@ -343,6 +501,7 @@ describe("LoliClient", () => {
         expect(callbackMessage).toBeTruthy();
         expect(callbackMessage).toContain("schema or semantic issues");
         expect(callbackLoaded).toBe("{abc}");
+        expect(Object.isFrozen(callbackLoaded)).toBe(true);
         expect(callbackCause instanceof LoliSpecMalformedJsonError).toBe(true);
       });
 
@@ -405,14 +564,14 @@ describe("LoliClient", () => {
 
     describe("specLoadedAndValidated", () => {
       test("gets called when constructor triggers initial load", async () => {
-        let callbackSepc: LoliSpec | null = null;
+        let callbackSpec: LoliSpec | null = null;
 
         const client = new LoliClient(
           validSpecLoader,
           {},
           {
             specLoadedAndValidated: (loadedSpec) => {
-              callbackSepc = loadedSpec;
+              callbackSpec = loadedSpec;
             },
           },
         );
@@ -420,11 +579,11 @@ describe("LoliClient", () => {
         await client.waitForFirstSpecLoadToFinish();
         await wait(1);
 
-        expect(JSON.stringify(callbackSepc)).toBe(validSpecStringified);
+        expect(JSON.stringify(callbackSpec)).toBe(validSpecStringified);
       });
 
       test("gets called when spec is first loaded via feature flag evaluation", async () => {
-        let callbackSepc: LoliSpec | null = null;
+        let callbackSpec: LoliSpec | null = null;
 
         const client = new LoliClient(
           validSpecLoader,
@@ -433,23 +592,23 @@ describe("LoliClient", () => {
           },
           {
             specLoadedAndValidated: (loadedSpec) => {
-              callbackSepc = loadedSpec;
+              callbackSpec = loadedSpec;
             },
           },
         );
 
         await wait(10);
 
-        expect(callbackSepc).toBeNull();
+        expect(callbackSpec).toBeNull();
 
         await client.evaluateBooleanFeatureFlag("ai-pilot", {});
         await wait(1);
 
-        expect(JSON.stringify(callbackSepc)).toBe(validSpecStringified);
+        expect(JSON.stringify(callbackSpec)).toBe(validSpecStringified);
       });
 
       test("gets called when spec reload is triggered", async () => {
-        let callbackSepc: LoliSpec | null = null;
+        let callbackSpec: LoliSpec | null = null;
         let callbackCount = 0;
 
         const client = new LoliClient(
@@ -458,7 +617,7 @@ describe("LoliClient", () => {
           {
             specLoadedAndValidated: (loadedSpec) => {
               callbackCount++;
-              callbackSepc = loadedSpec;
+              callbackSpec = loadedSpec;
             },
           },
         );
@@ -467,19 +626,19 @@ describe("LoliClient", () => {
         await wait(1);
 
         expect(callbackCount).toBe(1);
-        expect(JSON.stringify(callbackSepc)).toBe(validSpecStringified);
+        expect(JSON.stringify(callbackSpec)).toBe(validSpecStringified);
 
-        callbackSepc = null;
+        callbackSpec = null;
 
         client.triggerSpecReload();
         await wait(10);
 
         expect(callbackCount).toBe(2);
-        expect(JSON.stringify(callbackSepc)).toBe(validSpecStringified);
+        expect(JSON.stringify(callbackSpec)).toBe(validSpecStringified);
       });
 
       test("gets not called when spec is in cache and cache is still valid", async () => {
-        let callbackSepc: LoliSpec | null = null;
+        let callbackSpec: LoliSpec | null = null;
         let callbackCount = 0;
 
         const client = new LoliClient(
@@ -490,7 +649,7 @@ describe("LoliClient", () => {
           {
             specLoadedAndValidated: (loadedSpec) => {
               callbackCount++;
-              callbackSepc = loadedSpec;
+              callbackSpec = loadedSpec;
             },
           },
         );
@@ -499,7 +658,7 @@ describe("LoliClient", () => {
         await wait(1);
 
         expect(callbackCount).toBe(1);
-        expect(JSON.stringify(callbackSepc)).toBe(validSpecStringified);
+        expect(JSON.stringify(callbackSpec)).toBe(validSpecStringified);
 
         // This evaluation call should not trigger a refetch
         await client.evaluateBooleanFeatureFlag("ai-pilot", {});
@@ -509,7 +668,7 @@ describe("LoliClient", () => {
       });
 
       test("gets called when spec is in cache but cache expired", async () => {
-        let callbackSepc: LoliSpec | null = null;
+        let callbackSpec: LoliSpec | null = null;
         let callbackCount = 0;
 
         const client = new LoliClient(
@@ -520,7 +679,7 @@ describe("LoliClient", () => {
           {
             specLoadedAndValidated: (loadedSpec) => {
               callbackCount++;
-              callbackSepc = loadedSpec;
+              callbackSpec = loadedSpec;
             },
           },
         );
@@ -529,16 +688,37 @@ describe("LoliClient", () => {
         await wait(1);
 
         expect(callbackCount).toBe(1);
-        expect(JSON.stringify(callbackSepc)).toBe(validSpecStringified);
+        expect(JSON.stringify(callbackSpec)).toBe(validSpecStringified);
 
         // This wait should retrigger the spec reloading as then the cache is stale
-        callbackSepc = null;
+        callbackSpec = null;
         await wait(300);
         await client.evaluateBooleanFeatureFlag("ai-pilot", {});
         await wait(10);
 
         expect(callbackCount).toBe(2);
-        expect(JSON.stringify(callbackSepc)).toBe(validSpecStringified);
+        expect(JSON.stringify(callbackSpec)).toBe(validSpecStringified);
+      });
+
+      test("receives a new and frozen spec object", async () => {
+        let callbackSpec: LoliSpec | null = null;
+
+        const client = new LoliClient(
+          (processor) => Promise.resolve(processor(validSpec)),
+          {},
+          {
+            specLoadedAndValidated: (loadedSpec) => {
+              callbackSpec = loadedSpec;
+            },
+          },
+        );
+
+        await client.waitForFirstSpecLoadToFinish();
+        await wait(1);
+
+        expect(callbackSpec).toBeTruthy();
+        expect(Object.isFrozen(callbackSpec)).toBe(true);
+        expect(callbackSpec).not.toBe(validSpec);
       });
     });
   });
@@ -620,12 +800,12 @@ describe("LoliClient", () => {
         let loliSpec: LoliSpec | null = null;
 
         const client = new LoliClient(
-          async () => {
+          async (processor) => {
             loaderCounter++;
             await wait(50);
 
             if (loaderCounter === 6) {
-              return validSpec;
+              return processor(validSpec);
             }
 
             throw new Error("error 22");
@@ -733,9 +913,9 @@ describe("LoliClient", () => {
         let failureCallbackCalled = false;
 
         const client = new LoliClient(
-          async () => {
+          async (processor) => {
             await wait(100);
-            return validSpec;
+            return processor(validSpec);
           },
           {
             specLoaderTimeoutMilliseconds: 500,
@@ -763,9 +943,9 @@ describe("LoliClient", () => {
         let failureCallbackCalled = false;
 
         const client = new LoliClient(
-          async () => {
+          async (processor) => {
             await wait(600);
-            return validSpec;
+            return processor(validSpec);
           },
           {
             specLoaderTimeoutMilliseconds: 500,
@@ -794,9 +974,9 @@ describe("LoliClient", () => {
         let loaderCounter = 0;
 
         const client = new LoliClient(
-          async () => {
+          async (processor) => {
             loaderCounter++;
-            return validSpec;
+            return processor(validSpec);
           },
           {
             specCacheStaleTimeMilliseconds: 500,
@@ -833,15 +1013,182 @@ describe("LoliClient", () => {
     });
   });
 
+  describe("processor callbacks", () => {
+    describe("receivedInvalidData", () => {
+      test("gets called when processor receives malformed JSON", async () => {
+        let onInvalidCalled = false;
+        let onInvalidLoadedData: unknown = null;
+        let onInvalidError: unknown = null;
+
+        const client = new LoliClient(
+          async (processor) => {
+            return processor(`{ "abc: 123123 }`, {
+              receivedInvalidData: (loadedData, error) => {
+                onInvalidCalled = true;
+                onInvalidLoadedData = loadedData;
+                onInvalidError = error;
+              },
+            });
+          },
+          {
+            specLoaderMaxRetries: 0,
+          },
+        );
+
+        await client.waitForFirstSpecLoadToFinish();
+        await wait(1);
+
+        expect(onInvalidCalled).toBe(true);
+        expect(onInvalidLoadedData).toBe(`{ "abc: 123123 }`);
+        expect(onInvalidError instanceof LoliSpecMalformedJsonError).toBe(true);
+      });
+
+      test("gets called when processor receives an object with invalid Loli spec schema", async () => {
+        let onInvalidCalled = false;
+        let onInvalidLoadedData: unknown = null;
+        let onInvalidError: unknown = null;
+
+        const client = new LoliClient(
+          async (processor) => {
+            return processor(invalidSchemaSpec, {
+              receivedInvalidData: (loadedData, error) => {
+                onInvalidCalled = true;
+                onInvalidLoadedData = loadedData;
+                onInvalidError = error;
+              },
+            });
+          },
+          {
+            specLoaderMaxRetries: 0,
+          },
+        );
+
+        await client.waitForFirstSpecLoadToFinish();
+        await wait(1);
+
+        expect(onInvalidCalled).toBe(true);
+        expect(onInvalidLoadedData).toBe(invalidSchemaSpec);
+        expect(onInvalidError instanceof LoliSpecInvalidSchemaError).toBe(true);
+      });
+
+      test("gets called when processor receives spec with semantic issues", async () => {
+        let onInvalidCalled = false;
+        let onInvalidLoadedData: unknown = null;
+        let onInvalidError: unknown = null;
+
+        const client = new LoliClient(
+          async (processor) => {
+            return processor(semanticIssuesSpec, {
+              receivedInvalidData: (loadedData, error) => {
+                onInvalidCalled = true;
+                onInvalidLoadedData = loadedData;
+                onInvalidError = error;
+              },
+            });
+          },
+          {
+            specLoaderMaxRetries: 0,
+          },
+        );
+
+        await client.waitForFirstSpecLoadToFinish();
+        await wait(1);
+
+        expect(onInvalidCalled).toBe(true);
+        expect(onInvalidLoadedData).toBe(semanticIssuesSpec);
+        expect(onInvalidError instanceof LoliSpecSemanticIssuesError).toBe(
+          true,
+        );
+      });
+
+      test("processor waits for async callback to finish", async () => {
+        let onInvalidCalled = false;
+
+        const client = new LoliClient(
+          async (processor) => {
+            return processor(semanticIssuesSpec, {
+              receivedInvalidData: async () => {
+                onInvalidCalled = true;
+                await wait(700);
+              },
+            });
+          },
+          {
+            specLoaderMaxRetries: 0,
+          },
+        );
+
+        await client.waitForFirstSpecLoadToFinish();
+        await wait(1);
+
+        expect(onInvalidCalled).toBe(true);
+      });
+    });
+
+    describe("receivedValidSpec", () => {
+      test("gets called with validated and frozen spec when processor receives valid JSON spec", async () => {
+        let callbackCalled = false;
+        let callbackSpec: null | LoliSpec = null;
+
+        const client = new LoliClient(
+          async (processor) => {
+            return processor(validSpec, {
+              receivedValidSpec: (loliSpec) => {
+                callbackCalled = true;
+                callbackSpec = loliSpec;
+              },
+            });
+          },
+          {
+            specLoaderMaxRetries: 0,
+          },
+        );
+
+        await client.waitForFirstSpecLoadToFinish();
+        await wait(1);
+
+        expect(callbackCalled).toBe(true);
+        expect(Object.isFrozen(callbackSpec)).toBe(true);
+        expect(callbackSpec).not.toBe(validSpec); // has to be a different object
+        expect(JSON.stringify(callbackSpec)).toBe(JSON.stringify(validSpec));
+      });
+
+      test("processor waits for callback to finish", async () => {
+        let callbackCalled = false;
+
+        const client = new LoliClient(
+          async (processor) => {
+            return processor(validSpec, {
+              receivedValidSpec: async () => {
+                callbackCalled = true;
+                await wait(700);
+              },
+            });
+          },
+          {
+            specLoaderMaxRetries: 0,
+          },
+        );
+
+        await client.waitForFirstSpecLoadToFinish();
+        await wait(1);
+
+        expect(callbackCalled).toBe(true);
+      });
+    });
+  });
+
   describe("advanced loading behavior checks", () => {
     test("loader is never running multiple times in parallel", async () => {
       let loadedCounter = 0;
 
       const client = new LoliClient(
-        () =>
+        (processor) =>
           new Promise((resolve) => {
             loadedCounter++;
-            setTimeout(resolve, 250, validSpec);
+            setTimeout(() => {
+              resolve(processor(validSpec));
+            }, 250);
           }),
         {
           disableInitialSpecLoadOnCreation: true,
@@ -1109,7 +1456,7 @@ describe("LoliClient", () => {
         let emergencyFallbackCallbackCalled = false;
 
         const client = new LoliClient(
-          () => Promise.resolve(""),
+          (processor) => Promise.resolve(processor("")),
           { specLoaderMaxRetries: 0 },
           {
             emergencyFallbackUsed: () => {
@@ -1135,7 +1482,7 @@ describe("LoliClient", () => {
         let emergencyFallbackCallbackCalled = false;
 
         const client = new LoliClient(
-          () => Promise.resolve(""),
+          (processor) => Promise.resolve(processor("")),
           {
             specLoaderMaxRetries: 0,
             emergencyFallbacksByFeatureFlagName: {
@@ -1166,7 +1513,7 @@ describe("LoliClient", () => {
         let emergencyFallbackCallbackCalled = false;
 
         const client = new LoliClient(
-          () => Promise.resolve(""),
+          (processor) => Promise.resolve(processor("")),
           {
             specLoaderMaxRetries: 0,
             emergencyFallbacksByFeatureFlagName: {
@@ -1472,7 +1819,7 @@ describe("LoliClient", () => {
       let emergencyFallbackCallbackCalled = false;
 
       const client = new LoliClient(
-        () => Promise.resolve(""),
+        (processor) => Promise.resolve(processor("")),
         {
           specLoaderMaxRetries: 0,
           emergencyFallbacksByFeatureFlagName: {
@@ -1563,6 +1910,377 @@ describe("LoliClient", () => {
 
       expect(warningTypes).toContain("property-value-incorrect-data-type");
       expect(warningTypes).not.toContain("property-value-not-found");
+    });
+  });
+
+  describe("_dangerous.assumeDataIsValidSpec mode", () => {
+    describe("spec loading", () => {
+      test("client executes failure callback of invalid data type (null)", async () => {
+        let loaderFailureCalled = false;
+        let loaderFailureMessage: string | null = null;
+
+        const client = new LoliClient(
+          (processor) =>
+            processor(null as unknown as object, {
+              _dangerous: {
+                assumeDataIsValidSpec: true,
+              },
+            }),
+          {
+            specLoaderMaxRetries: 0,
+          },
+          {
+            specLoaderFailure: (message) => {
+              loaderFailureCalled = true;
+              loaderFailureMessage = message;
+            },
+          },
+        );
+
+        await client.waitForFirstSpecLoadToFinish();
+        await wait(1);
+
+        expect(loaderFailureCalled).toBe(true);
+        expect(loaderFailureMessage).toBeTruthy();
+        expect(loaderFailureMessage).toContain(
+          "was neither a string nor an object",
+        );
+      });
+
+      test("client executes failure callback of invalid data type (array)", async () => {
+        let loaderFailureCalled = false;
+        let loaderFailureMessage: string | null = null;
+
+        const client = new LoliClient(
+          (processor) =>
+            processor([1, 2] as unknown as object, {
+              _dangerous: {
+                assumeDataIsValidSpec: true,
+              },
+            }),
+          {
+            specLoaderMaxRetries: 0,
+          },
+          {
+            specLoaderFailure: (message) => {
+              loaderFailureCalled = true;
+              loaderFailureMessage = message;
+            },
+          },
+        );
+
+        await client.waitForFirstSpecLoadToFinish();
+        await wait(1);
+
+        expect(loaderFailureCalled).toBe(true);
+        expect(loaderFailureMessage).toBeTruthy();
+        expect(loaderFailureMessage).toContain(
+          "was neither a string nor an object",
+        );
+      });
+
+      test("client rejects invalid JSON and calls specLoaderFailure callback", async () => {
+        let loaderFailureCalled = false;
+        let loaderFailureMessage: string | null = null;
+
+        const client = new LoliClient(
+          (processor) =>
+            processor(`{"abc: 12true}`, {
+              _dangerous: {
+                assumeDataIsValidSpec: true,
+              },
+            }),
+          {
+            specLoaderMaxRetries: 0,
+          },
+          {
+            specLoaderFailure: (message) => {
+              loaderFailureCalled = true;
+              loaderFailureMessage = message;
+            },
+          },
+        );
+
+        await client.waitForFirstSpecLoadToFinish();
+        await wait(1);
+
+        expect(loaderFailureCalled).toBe(true);
+        expect(loaderFailureMessage).toBeTruthy();
+        expect(loaderFailureMessage).toContain("spec loader failed");
+        expect(loaderFailureMessage).toContain("Unterminated string in JSON");
+      });
+
+      test("client accepts invalid stringified spec as valid spec", async () => {
+        let loadedAndValidatedCalled = false;
+        let loadedAndValidatedSpec: unknown = null;
+        let processorOnValidCalled = false;
+
+        const client = new LoliClient(
+          (processor) =>
+            processor(`{"abc": 123}`, {
+              _dangerous: {
+                assumeDataIsValidSpec: true,
+              },
+              receivedValidSpec: () => {
+                processorOnValidCalled = true;
+              },
+            }),
+          {},
+          {
+            specLoadedAndValidated: (loadedSpec) => {
+              loadedAndValidatedCalled = true;
+              loadedAndValidatedSpec = loadedSpec;
+            },
+          },
+        );
+
+        await client.waitForFirstSpecLoadToFinish();
+        await wait(1);
+
+        expect(processorOnValidCalled).toBe(false); // receivedValidSpec is skipped in dangerous mode
+        expect(loadedAndValidatedCalled).toBe(true);
+        expect(loadedAndValidatedSpec).toEqual({ abc: 123 }); // dangerous mode parses stringified docs correctly
+        expect(Object.isFrozen(loadedAndValidatedSpec)).toBe(true);
+      });
+
+      test("client accepts invalid object as valid spec", async () => {
+        let loadedAndValidatedCalled = false;
+        let loadedAndValidatedSpec: unknown = null;
+        let processorOnValidCalled = false;
+
+        const client = new LoliClient(
+          (processor) =>
+            processor(
+              { abc: true },
+              {
+                _dangerous: {
+                  assumeDataIsValidSpec: true,
+                },
+                receivedValidSpec: () => {
+                  processorOnValidCalled = true;
+                },
+              },
+            ),
+          {},
+          {
+            specLoadedAndValidated: (loadedSpec) => {
+              loadedAndValidatedCalled = true;
+              loadedAndValidatedSpec = loadedSpec;
+            },
+          },
+        );
+
+        await client.waitForFirstSpecLoadToFinish();
+        await wait(1);
+
+        expect(processorOnValidCalled).toBe(false); // receivedValidSpec is skipped in dangerous mode
+        expect(loadedAndValidatedCalled).toBe(true);
+        expect(loadedAndValidatedSpec).toEqual({ abc: true });
+        expect(Object.isFrozen(loadedAndValidatedSpec)).toBe(true);
+      });
+    });
+
+    describe("evaluation", () => {
+      test("evaluateBooleanFeatureFlag uses emergency fallback value and calls emergencyFallbackUsed callback", async () => {
+        const emergencyFallbackUsedCalls: [string, unknown][] = [];
+
+        const client = new LoliClient(
+          (processor) =>
+            processor(
+              {},
+              {
+                _dangerous: {
+                  assumeDataIsValidSpec: true,
+                },
+              },
+            ),
+          {},
+          {
+            emergencyFallbackUsed: (message, cause) => {
+              emergencyFallbackUsedCalls.push([message, cause]);
+            },
+          },
+        );
+
+        await client.waitForFirstSpecLoadToFinish();
+        await wait(1);
+
+        const flagValue = await client.evaluateBooleanFeatureFlag(
+          "some-boolean-flag-dangerous-mode",
+          {},
+        );
+        await wait(1);
+
+        expect(flagValue).toBe(false);
+
+        expect(emergencyFallbackUsedCalls).toHaveLength(1);
+
+        expect(emergencyFallbackUsedCalls[0][0]).toContain(
+          `Evaluation of feature flag "some-boolean-flag-dangerous-mode" failed due to an unknown error`,
+        );
+        expect(emergencyFallbackUsedCalls[0][0]).toContain(
+          `Are you operating in _dangerous.assumeDataIsValidSpec mode?`,
+        );
+        expect(emergencyFallbackUsedCalls[0][0]).toContain(
+          `TypeError: Cannot read properties of undefined`,
+        );
+
+        expect(emergencyFallbackUsedCalls[0][1]).toBeTruthy();
+        expect(emergencyFallbackUsedCalls[0][1] instanceof TypeError).toBe(
+          true,
+        );
+      });
+
+      test("evaluateNumberFeatureFlag uses emergency fallback value and calls emergencyFallbackUsed callback", async () => {
+        const emergencyFallbackUsedCalls: [string, unknown][] = [];
+
+        const client = new LoliClient(
+          (processor) =>
+            processor(
+              {},
+              {
+                _dangerous: {
+                  assumeDataIsValidSpec: true,
+                },
+              },
+            ),
+          {},
+          {
+            emergencyFallbackUsed: (message, cause) => {
+              emergencyFallbackUsedCalls.push([message, cause]);
+            },
+          },
+        );
+
+        await client.waitForFirstSpecLoadToFinish();
+        await wait(1);
+
+        const flagValue = await client.evaluateNumberFeatureFlag(
+          "some-number-flag-dangerous-mode",
+          {},
+        );
+        await wait(1);
+
+        expect(flagValue).toBe(0);
+
+        expect(emergencyFallbackUsedCalls).toHaveLength(1);
+
+        expect(emergencyFallbackUsedCalls[0][0]).toContain(
+          `Evaluation of feature flag "some-number-flag-dangerous-mode" failed due to an unknown error`,
+        );
+        expect(emergencyFallbackUsedCalls[0][0]).toContain(
+          `Are you operating in _dangerous.assumeDataIsValidSpec mode?`,
+        );
+        expect(emergencyFallbackUsedCalls[0][0]).toContain(
+          `TypeError: Cannot read properties of undefined`,
+        );
+
+        expect(emergencyFallbackUsedCalls[0][1]).toBeTruthy();
+        expect(emergencyFallbackUsedCalls[0][1] instanceof TypeError).toBe(
+          true,
+        );
+      });
+
+      test("evaluateStringFeatureFlag uses emergency fallback value and calls emergencyFallbackUsed callback", async () => {
+        const emergencyFallbackUsedCalls: [string, unknown][] = [];
+
+        const client = new LoliClient(
+          (processor) =>
+            processor(
+              {},
+              {
+                _dangerous: {
+                  assumeDataIsValidSpec: true,
+                },
+              },
+            ),
+          {},
+          {
+            emergencyFallbackUsed: (message, cause) => {
+              emergencyFallbackUsedCalls.push([message, cause]);
+            },
+          },
+        );
+
+        await client.waitForFirstSpecLoadToFinish();
+        await wait(1);
+
+        const flagValue = await client.evaluateStringFeatureFlag(
+          "some-string-flag-dangerous-mode",
+          {},
+        );
+        await wait(1);
+
+        expect(flagValue).toBe("");
+
+        expect(emergencyFallbackUsedCalls).toHaveLength(1);
+
+        expect(emergencyFallbackUsedCalls[0][0]).toContain(
+          `Evaluation of feature flag "some-string-flag-dangerous-mode" failed due to an unknown error`,
+        );
+        expect(emergencyFallbackUsedCalls[0][0]).toContain(
+          `Are you operating in _dangerous.assumeDataIsValidSpec mode?`,
+        );
+        expect(emergencyFallbackUsedCalls[0][0]).toContain(
+          `TypeError: Cannot read properties of undefined`,
+        );
+
+        expect(emergencyFallbackUsedCalls[0][1]).toBeTruthy();
+        expect(emergencyFallbackUsedCalls[0][1] instanceof TypeError).toBe(
+          true,
+        );
+      });
+
+      test("evaluateAllFeatureFlags uses emergency fallback value and calls emergencyFallbackUsed callback", async () => {
+        const emergencyFallbackUsedCalls: [string, unknown][] = [];
+
+        const client = new LoliClient(
+          (processor) =>
+            processor(
+              {},
+              {
+                _dangerous: {
+                  assumeDataIsValidSpec: true,
+                },
+              },
+            ),
+          {
+            emergencyFallbacksByFeatureFlagName: {
+              test: 123,
+            },
+          },
+          {
+            emergencyFallbackUsed: (message, cause) => {
+              emergencyFallbackUsedCalls.push([message, cause]);
+            },
+          },
+        );
+
+        await client.waitForFirstSpecLoadToFinish();
+        await wait(1);
+
+        const allFlagValues = await client.evaluateAllFeatureFlags({});
+        await wait(1);
+
+        expect(allFlagValues).toEqual({ test: 123 });
+
+        expect(emergencyFallbackUsedCalls).toHaveLength(1);
+
+        expect(emergencyFallbackUsedCalls[0][0]).toContain(
+          `Evaluation of all feature flags failed due to unknown error`,
+        );
+        expect(emergencyFallbackUsedCalls[0][0]).toContain(
+          `Are you operating in _dangerous.assumeDataIsValidSpec mode?`,
+        );
+        expect(emergencyFallbackUsedCalls[0][0]).toContain(
+          `TypeError: Cannot read properties of undefined`,
+        );
+
+        expect(emergencyFallbackUsedCalls[0][1]).toBeTruthy();
+        expect(emergencyFallbackUsedCalls[0][1] instanceof TypeError).toBe(
+          true,
+        );
+      });
     });
   });
 });

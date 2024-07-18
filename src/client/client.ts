@@ -1,3 +1,4 @@
+import { LoliError } from "../errors/LoliError";
 import type { EvaluationContext } from "../evaluation/EvaluationContext";
 import type { EvaluationMetadata } from "../evaluation/EvaluationMetadata";
 import { evaluateFeatureFlag } from "../evaluation/featureFlag";
@@ -20,6 +21,8 @@ import type {
   LoliClientCallbacks,
   LoliClientOptions,
   LoliClientSpecLoader,
+  LoliClientSpecLoaderProcessor,
+  LoliClientSpecLoaderProcessorResult,
 } from "./types";
 
 export function createDefaultLoliClientOptions(): Readonly<
@@ -53,8 +56,11 @@ export function createDefaultLoliClientCallbacks(): Readonly<
     specLoaderFailure: (message, cause) => {
       console.error(message, cause);
     },
-    specValidationFailure: (message, specLoaderResult, casue) => {
-      console.error(message, specLoaderResult, casue);
+    specLoaderProcessorCallbackFailure: (message, cause) => {
+      console.error(message, cause);
+    },
+    specValidationFailure: (message, specLoaderResult, cause) => {
+      console.error(message, specLoaderResult, cause);
     },
     emergencyFallbackUsed: (message, cause) => {
       console.error(message, cause);
@@ -90,6 +96,7 @@ export class LoliClient {
    * spec loading, if it is not disabled via the options.
    *
    * @param specLoader Loader function the client can use to get the stringified JSON LoliSpec or the LoliSpec as an object.
+   *                   Gets a processor function as an argument and has to call it with the loaded data and return the processor's result.
    * @param options Optional options to tweak the client behaviour.
    * @param callbacks Optional callbacks to get notified about loaded specs and issues.
    */
@@ -127,6 +134,9 @@ export class LoliClient {
 
     this.callbacks = {
       specLoaderFailure: wrapCallback(rawCallbacks.specLoaderFailure),
+      specLoaderProcessorCallbackFailure: wrapCallback(
+        rawCallbacks.specLoaderProcessorCallbackFailure,
+      ),
       specValidationFailure: wrapCallback(rawCallbacks.specValidationFailure),
       specLoadedAndValidated:
         rawCallbacks.specLoadedAndValidated &&
@@ -138,6 +148,136 @@ export class LoliClient {
     if (!this.options.disableInitialSpecLoadOnCreation) {
       void this.loadAndValidateLoliSpec();
     }
+  }
+
+  /**
+   * This method creates a new "processor" function that can be passed to a spec loader.
+   * This function return an object holding the new processor function and a utility function
+   * to check if a spec loader result was produced by the corresponding processor function
+   * to enforce zero trust.
+   *
+   * @returns Returns object with processor function and utility functions to assert that spec loader results have been created by the processor.
+   */
+  private createProcessor(): {
+    processor: LoliClientSpecLoaderProcessor;
+    didProcessorProduceResult: (
+      result: LoliClientSpecLoaderProcessorResult,
+    ) => boolean;
+  } {
+    const producedResults: Set<LoliClientSpecLoaderProcessorResult> = new Set();
+
+    function didProcessorProduceResult(
+      result: LoliClientSpecLoaderProcessorResult,
+    ): boolean {
+      return producedResults.has(result);
+    }
+
+    function produceResult(
+      result: LoliClientSpecLoaderProcessorResult,
+    ): LoliClientSpecLoaderProcessorResult {
+      const frozenResult = Object.freeze({
+        ...result,
+        ...("loadedAndValidatedSpec" in result
+          ? {
+              loadedAndValidatedSpec: Object.freeze(
+                result.loadedAndValidatedSpec,
+              ),
+            }
+          : {}),
+        ...("loadedData" in result
+          ? {
+              loadedAndValidatedSpec: Object.freeze(result.loadedData),
+            }
+          : {}),
+      } as LoliClientSpecLoaderProcessorResult);
+
+      producedResults.add(frozenResult);
+
+      return frozenResult;
+    }
+
+    const callbacks = this.callbacks;
+
+    const processor: LoliClientSpecLoaderProcessor = async function (
+      loadedData,
+      options,
+    ) {
+      if (
+        loadedData === undefined ||
+        loadedData === null ||
+        (typeof loadedData !== "string" && typeof loadedData !== "object") ||
+        Array.isArray(loadedData)
+      ) {
+        throw new Error(
+          `The result of the spec loader was neither a string nor an object. Type = ${typeof loadedData}, is array = ${Array.isArray(loadedData)}`,
+        );
+      }
+
+      try {
+        if (options?._dangerous?.assumeDataIsValidSpec) {
+          return produceResult({
+            state: "valid-spec-loaded",
+            loadedAndValidatedSpec:
+              typeof loadedData === "string"
+                ? (JSON.parse(loadedData) as LoliSpec)
+                : (loadedData as LoliSpec),
+          });
+        } else {
+          const loadedAndValidatedSpec = Object.freeze(
+            typeof loadedData === "string"
+              ? deserializeLoliSpecFromJson(loadedData)
+              : assertSemanticallyValidLoliSpec(
+                  assertValidLoliSpecSchema(loadedData),
+                ),
+          );
+
+          if (options?.receivedValidSpec) {
+            try {
+              await options.receivedValidSpec(loadedAndValidatedSpec);
+            } catch (processorCallbackError) {
+              callbacks?.specLoaderProcessorCallbackFailure(
+                `The processor callback "receivedValidSpec" failed. Error: ${processorCallbackError}`,
+                processorCallbackError,
+              );
+            }
+          }
+
+          return produceResult({
+            state: "valid-spec-loaded",
+            loadedAndValidatedSpec: loadedAndValidatedSpec,
+          });
+        }
+      } catch (error) {
+        if (error instanceof LoliError) {
+          if (options?.receivedInvalidData) {
+            try {
+              await options.receivedInvalidData(
+                loadedData,
+                error as LoliError<never>,
+              );
+            } catch (processorCallbackError) {
+              callbacks?.specLoaderProcessorCallbackFailure(
+                `The processor callback "receivedInvalidData" failed. Error: ${processorCallbackError}`,
+                processorCallbackError,
+              );
+            }
+          }
+
+          return produceResult({
+            state: "invalid-spec-loaded",
+            loadedData,
+            error: error as LoliError<never>,
+          });
+        }
+
+        throw error;
+      }
+    };
+
+    return {
+      processor,
+      didProcessorProduceResult,
+    };
   }
 
   /**
@@ -199,82 +339,78 @@ export class LoliClient {
 
         // Spec loader try/catch
         try {
-          const loaderResult = await new Promise<string | object>(
-            (resolve, reject) => {
-              let timedOut = false;
-              let timeout: ReturnType<typeof setTimeout> | undefined =
-                undefined;
+          const { processor, didProcessorProduceResult } =
+            this.createProcessor();
 
-              // Set up the timeout if enabled
-              if (this.options.specLoaderTimeoutMilliseconds >= 0) {
-                timeout = setTimeout(() => {
-                  timedOut = true;
+          const specLoaderProcessorResult =
+            await new Promise<LoliClientSpecLoaderProcessorResult>(
+              (resolve, reject) => {
+                let timedOut = false;
+                let timeout: ReturnType<typeof setTimeout> | undefined =
+                  undefined;
 
-                  // Reject will be handled by outer try/catch
-                  reject(
-                    new Error(
-                      `Loader timed out after ${this.options.specLoaderTimeoutMilliseconds}ms.`,
-                    ),
-                  );
-                }, this.options.specLoaderTimeoutMilliseconds);
-              }
+                // Set up the timeout if enabled
+                if (this.options.specLoaderTimeoutMilliseconds >= 0) {
+                  timeout = setTimeout(() => {
+                    timedOut = true;
 
-              // Load actual spec
-              this.specLoader()
-                .then((result) => {
-                  if (!timedOut) {
-                    clearTimeout(timeout);
-                    resolve(result);
-                  }
-                })
-                .catch((cause) => {
-                  reject(cause);
-                });
-            },
+                    // Reject will be handled by outer try/catch
+                    reject(
+                      new Error(
+                        `Loader timed out after ${this.options.specLoaderTimeoutMilliseconds}ms.`,
+                      ),
+                    );
+                  }, this.options.specLoaderTimeoutMilliseconds);
+                }
+
+                // Load actual spec with processor
+                this.specLoader(processor)
+                  .then((result) => {
+                    if (!timedOut) {
+                      clearTimeout(timeout);
+                      resolve(result);
+                    }
+                  })
+                  .catch((cause) => {
+                    reject(cause);
+                  });
+              },
+            );
+
+          // Verify that the spec loader used the provided processor.
+          if (!didProcessorProduceResult(specLoaderProcessorResult)) {
+            throw new Error(
+              "The spec loader did not use the provided processor or used it multiple times and did not return the last result.",
+            );
+          }
+
+          // Report validation issues
+          if (specLoaderProcessorResult.state === "invalid-spec-loaded") {
+            this.callbacks.specValidationFailure(
+              `Critical error: The fetched spec had schema or semantic issues. Cause: ${specLoaderProcessorResult.error}`,
+              specLoaderProcessorResult.loadedData,
+              specLoaderProcessorResult.error,
+            );
+
+            continue; // next load attempt
+          }
+
+          this.loliSpec = specLoaderProcessorResult.loadedAndValidatedSpec;
+          this.loliSpecLoadedTimestamp = new Date();
+
+          // Report success
+          this.callbacks.specLoadedAndValidated?.(
+            specLoaderProcessorResult.loadedAndValidatedSpec,
           );
 
-          if (
-            loaderResult === undefined ||
-            loaderResult === null ||
-            (typeof loaderResult !== "string" &&
-              typeof loaderResult !== "object") ||
-            Array.isArray(loaderResult)
-          ) {
-            throw new Error(
-              `The result of the spec loader was neither a string nor an object. Type = ${typeof loaderResult}, is array = ${Array.isArray(loaderResult)}`,
-            );
-          }
-
-          // Spec validation try/catch
-          try {
-            const loadedAndValidatedLoliSpec =
-              typeof loaderResult === "string"
-                ? deserializeLoliSpecFromJson(loaderResult)
-                : assertSemanticallyValidLoliSpec(
-                    assertValidLoliSpecSchema(loaderResult),
-                  );
-
-            this.loliSpec = loadedAndValidatedLoliSpec;
-            this.loliSpecLoadedTimestamp = new Date();
-
-            this.callbacks.specLoadedAndValidated?.(loadedAndValidatedLoliSpec);
-
-            // Very important -> stop for loop on success
-            break loadAttempts;
-          } catch (error) {
-            this.callbacks.specValidationFailure(
-              `Critical error: The fetched spec had schema or semantic issues. Error: ${error}`,
-              loaderResult,
-              error,
-            );
-          }
+          break loadAttempts; // Very important -> stop for-loop on success.
         } catch (error) {
           this.callbacks.specLoaderFailure(
             `Critical error: The spec loader failed. Error: ${error}`,
             error,
           );
         }
-      }
+      } // End of for-loop for attempts.
     } catch (error) {
       this.callbacks.specLoaderFailure(
         `Critical error: The loading the spec failed due to an unknown error. Error: ${error}`,
@@ -535,7 +671,7 @@ export class LoliClient {
       }
 
       this.callbacks.emergencyFallbackUsed(
-        `Critical error: Evaluation of feature flag "${featureFlagName}" failed due to an unknown error. Returning emergency fallback. Error: ${error}`,
+        `Critical error: Evaluation of feature flag "${featureFlagName}" failed due to an unknown error. Are you operating in _dangerous.assumeDataIsValidSpec mode? Returning emergency fallback. Error: ${error}`,
         error,
       );
 
@@ -683,7 +819,7 @@ export class LoliClient {
       return evaluatedFeatureFlags;
     } catch (error) {
       this.callbacks.emergencyFallbackUsed(
-        `Critical error: Evaluation of all feature flags failed due to unknown error. Returning fallback emergency fallback for all feature flags. Error: ${error}`,
+        `Critical error: Evaluation of all feature flags failed due to unknown error. Are you operating in _dangerous.assumeDataIsValidSpec mode? Returning fallback emergency fallback for all feature flags. Error: ${error}`,
         error,
       );
 

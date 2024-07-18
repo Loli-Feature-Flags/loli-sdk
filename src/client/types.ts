@@ -1,7 +1,79 @@
+import type { LoliError } from "../errors/LoliError";
 import type { EvaluationWarningLogger } from "../evaluation/EvaluationWarningLogging";
 import type { LoliSpec } from "../schema/LoliSpec";
 
-export type LoliClientSpecLoader = () => Promise<string | object>;
+export type LoliClientSpecLoaderProcessorResult =
+  | {
+      state: "valid-spec-loaded";
+
+      /**
+       * The loaded and validated specification the
+       * {@link LoliClient} will use to perform evaluations.
+       */
+      loadedAndValidatedSpec: LoliSpec;
+    }
+  | {
+      state: "invalid-spec-loaded";
+
+      /**
+       * The loaded but invalid data.
+       */
+      loadedData: unknown;
+
+      /**
+       * The Loli validation error.
+       */
+      error: LoliError<never>;
+    };
+
+export type LoliClientSpecLoaderProcessorOptions = {
+  /**
+   * This processor callback is called when the processor
+   * determined the data loaded by the spec loader as invalid.
+   *
+   * @param loadedData Data the spec loader passed to the processor.
+   */
+  receivedInvalidData?: (
+    loadedData: unknown,
+    error: LoliError<never>,
+  ) => Promise<void> | void;
+
+  /**
+   * This processor callback is called when the processor
+   * determined the data loaded by the spec loader as valid.
+   *
+   * @param loliSpec The loaded and validated spec.
+   */
+  receivedValidSpec?: (loliSpec: LoliSpec) => Promise<void> | void;
+
+  /**
+   * This is an optional object holding
+   * options that are only intended for advanced use cases.
+   *
+   * Default value: {} (empty object)
+   */
+  _dangerous?: {
+    /**
+     * If this is set to true, the processor will skip schema and semantic validation
+     * and essentially assume the data the spec loader passes is valid.
+     *
+     * WARNING: Use that only for advanced use cases when you can guarantee
+     * that the returned data is valid. If the returned data is not valid,
+     * this could lead to unwanted effects. Client evaluation will continue to work,
+     * but always return emergency fallback values.
+     */
+    assumeDataIsValidSpec?: boolean;
+  };
+};
+
+export type LoliClientSpecLoaderProcessor = (
+  loadedData: string | object,
+  options?: LoliClientSpecLoaderProcessorOptions,
+) => Promise<LoliClientSpecLoaderProcessorResult>;
+
+export type LoliClientSpecLoader = (
+  processor: LoliClientSpecLoaderProcessor,
+) => Promise<LoliClientSpecLoaderProcessorResult>;
 
 export type LoliClientEvaluationEmergencyFallbacks = {
   boolean: boolean;
@@ -165,18 +237,31 @@ export type LoliClientCallbacks = {
   specLoaderFailure?: (message: string, cause?: unknown) => void;
 
   /**
+   * This callback is executed when the spec loader processor
+   * executes (if specified) one of its callbacks and detects that they
+   * throw an error.
+   *
+   * @param message Failure message.
+   * @param cause Optional cause.
+   */
+  specLoaderProcessorCallbackFailure?: (
+    message: string,
+    cause?: unknown,
+  ) => void;
+
+  /**
    * This callback is executed after the spec loader successfully returned
    * something, but the result is invalid JSON or a Loli specification with
    * an invalid schema or with semantic issues.
    *
    * @param message Failure message.
    * @param specLoaderResult Result of the spec loader that was invalid JSON or a spec with an invalid schema or semantic issues.
-   * @param casue Optional cause.
+   * @param cause Optional cause.
    */
   specValidationFailure?: (
     message: string,
     specLoaderResult: unknown,
-    casue?: unknown,
+    cause?: unknown,
   ) => void;
 
   /**
