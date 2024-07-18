@@ -5,8 +5,14 @@ import type { EvaluationContext } from "./EvaluationContext";
 import type { EvaluationMetadata } from "./EvaluationMetadata";
 
 /**
- * Evaluates the given segment by evaluating its conditionSet.
- * Therefore, the method {@link evaluateConditionSet} is used.
+ * If the segmentEvaluationCache of the passed {@link EvaluationMetadata}
+ * already contains an evaluation for the segment (by segment ID as key),
+ * then the cached evaluation is returned.
+ *
+ * Otherwise, evaluates the given segment by evaluating its conditionSet.
+ * Therefore, the method {@link evaluateConditionSet} is used. This
+ * computed evaluation is then stored in the segmentEvaluationCache of
+ * the passed {@link EvaluationMetadata}.
  *
  * @param segment Segment to be evaluated.
  * @param loliSpec LoliSpec used to extract information about conditions throughout the whole evaluation.
@@ -20,10 +26,26 @@ export function evaluateSegment(
   evaluationContext: EvaluationContext,
   evaluationMetadata: EvaluationMetadata,
 ): boolean {
-  return evaluateConditionSet(
+  if (evaluationMetadata.segmentEvaluationCache) {
+    const cachedEvaluation = evaluationMetadata.segmentEvaluationCache.get(
+      segment.id,
+    );
+
+    if (typeof cachedEvaluation === "boolean") {
+      return cachedEvaluation;
+    }
+  }
+
+  const evaluation = evaluateConditionSet(
     segment.conditionSet,
     loliSpec,
     evaluationContext,
     evaluationMetadata,
   );
+
+  if (evaluationMetadata.segmentEvaluationCache) {
+    evaluationMetadata.segmentEvaluationCache.set(segment.id, evaluation);
+  }
+
+  return evaluation;
 }

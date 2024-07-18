@@ -85,4 +85,66 @@ describe("evaluateSegment", () => {
       evaluateSegment(segment, loliSpec, evaluationContext, evaluationMetadata),
     ).toBe(false);
   });
+
+  test("Stores evaluations in specified segmentEvaluationCache and uses cache correctly", () => {
+    const segment: Segment = {
+      id: "0a9s7dh9a87sd",
+      name: "Some Segment",
+      conditionSet: {
+        operator: "and",
+        conditions: [truePropertyCondition],
+      },
+    };
+
+    const evaluationMetadataWithSegmentEvaluationCache: EvaluationMetadata = {
+      ...evaluationMetadata,
+      segmentEvaluationCache: new Map(),
+    };
+
+    expect(
+      evaluateSegment(
+        segment,
+        loliSpec,
+        evaluationContext,
+        evaluationMetadataWithSegmentEvaluationCache,
+      ),
+    ).toBe(true);
+
+    expect(
+      evaluationMetadataWithSegmentEvaluationCache.segmentEvaluationCache?.get(
+        segment.id,
+      ),
+    ).toBe(true);
+
+    // now we manipulate the cached evaluation to "false", reevaluate and see if the cached value is returned instead
+
+    evaluationMetadataWithSegmentEvaluationCache.segmentEvaluationCache?.set(
+      segment.id,
+      false,
+    );
+
+    expect(
+      evaluateSegment(
+        segment,
+        loliSpec,
+        evaluationContext,
+        evaluationMetadataWithSegmentEvaluationCache,
+      ),
+    ).toBe(false); // cached value
+
+    // Now we delete the cached evaluation -> evaluate call should return true again
+
+    evaluationMetadataWithSegmentEvaluationCache.segmentEvaluationCache?.delete(
+      segment.id,
+    );
+
+    expect(
+      evaluateSegment(
+        segment,
+        loliSpec,
+        evaluationContext,
+        evaluationMetadataWithSegmentEvaluationCache,
+      ),
+    ).toBe(true);
+  });
 });

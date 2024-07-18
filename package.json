@@ -1,6 +1,6 @@
 {
   "name": "@loli-feature-flags/loli-sdk",
-  "version": "1.0.0-alpha.5",
+  "version": "1.0.0-alpha.6",
   "keywords": [
     "featureflags",
     "flags",

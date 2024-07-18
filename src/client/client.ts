@@ -548,6 +548,7 @@ export class LoliClient {
     return {
       evaluationDateTime: new Date(),
       rolloutGroup: computeRolloutGroup(loliSpec, evaluationContext),
+      segmentEvaluationCache: new Map(),
       warningLogger: this.callbacks.evaluationWarning,
     };
   }
