@@ -32,9 +32,17 @@ export function evaluateStringValueOperatorAndOperand(
     case "doesNotEndWith":
       return !value.endsWith(operand);
     case "matchesRegex":
-      return new RegExp(operand).test(value);
+      try {
+        return new RegExp(operand).test(value);
+      } catch (error) {
+        return false;
+      }
     case "doesNotMatchRegex":
-      return !new RegExp(operand).test(value);
+      try {
+        return !new RegExp(operand).test(value);
+      } catch (error) {
+        return true;
+      }
     case "isBlank":
       return value.trim().length === 0;
     case "isNotBlank":

@@ -1,6 +1,6 @@
 {
   "name": "@loli-feature-flags/loli-sdk",
-  "version": "1.0.0-alpha.6",
+  "version": "1.0.0-alpha.7",
   "keywords": [
     "featureflags",
     "flags",
@@ -50,6 +50,9 @@
     "prepublishOnly": "npm run test && npm run lint:check && npm run build",
     "esm:fix": "tsc-esm-fix --target=dist/mjs --tsconfig tsconfig-mjs.json"
   },
+  "dependencies": {
+    "zod": ">=3.23.0"
+  },
   "devDependencies": {
     "@jest/globals": "^29.7.0",
     "@total-typescript/ts-reset": "^0.5.1",
@@ -71,8 +74,5 @@
     "tsc-esm-fix": "^2.20.26",
     "tsx": "^4.7.1",
     "typescript": "^5.3.3"
-  },
-  "peerDependencies": {
-    "zod": ">=3.23.0"
   }
 }

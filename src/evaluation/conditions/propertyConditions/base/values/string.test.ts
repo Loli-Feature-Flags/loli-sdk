@@ -122,6 +122,16 @@ describe("evaluateStringValueOperatorAndOperand", () => {
         operand: "^[a-z]+\\-\\w+\\-[1-9]{4}$",
         expected: false,
       },
+      {
+        value: "hello-world",
+        operand: "^hello\\-[a-z]+$",
+        expected: true,
+      },
+      {
+        value: "hello-world",
+        operand: "^hel(lo\\-/[a-z]+$",
+        expected: false,
+      },
     ],
     doesNotMatchRegex: [
       // Just some random samples to test regex functionality
@@ -150,6 +160,16 @@ describe("evaluateStringValueOperatorAndOperand", () => {
       {
         value: "hELlo-wor55-1234",
         operand: "^[a-z]+\\-\\w+\\-[1-9]{4}$",
+        expected: true,
+      },
+      {
+        value: "hello-world",
+        operand: "^hello\\-[a-z]+$",
+        expected: false,
+      },
+      {
+        value: "hello-world",
+        operand: "^hel(lo\\-/[a-z]+$",
         expected: true,
       },
     ],
