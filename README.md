@@ -4,25 +4,16 @@ This repo hosts the heart of Loli Feature Flags: The JavaScript/TypeScript SDK.
 It defines the Loli spec schema, provides validation capabilities, utilities
 to inspect a Loli spec, and the most important piece: The evaluation client.
 
-# Demo
-
-_todo_
-
 # Documentation
 
-_todo_
+Check out the docs: [https://www.lolifeatureflags.com/reference/sdk/ 🔗](https://www.lolifeatureflags.com/reference/sdk/)
+
+Most important pages:
+- [Installation 🔗](https://www.lolifeatureflags.com/reference/sdk/installation.html)
+- [Client 🔗](https://www.lolifeatureflags.com/reference/sdk/client/)
+- [Architectures 🔗](https://www.lolifeatureflags.com/reference/sdk/architectures/)
 
 # General info
 
-- Website: [lolifeatureflags.com](https://lolifeatureflags.com)
+- Loli Feature Flags Website: [lolifeatureflags.com 🔗](https://lolifeatureflags.com)
 - GitHub Organization: [Loli-Feature-Flags @ GitHub 🔗](https://github.com/Loli-Feature-Flags/)
-
-# 🙆‍♂️ Author
-
-Hey, I am Peter Kuhmann! 👋
-
-My social profiles:
-
-- [GitHub Profile 🔗](https://github.com/peter-kuhmann/)
-- [X / Twitter 🔗](https://twitter.com/squirrel_pierre)
-- [LinkedIn 🔗](https://www.linkedin.com/in/peter-kuhmann/)

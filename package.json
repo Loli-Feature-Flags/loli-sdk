@@ -1,6 +1,6 @@
 {
   "name": "@loli-feature-flags/loli-sdk",
-  "version": "1.0.0-alpha.7",
+  "version": "1.0.0-alpha.8",
   "keywords": [
     "featureflags",
     "flags",
@@ -16,6 +16,7 @@
     "type": "git",
     "url": "https://github.com/Loli-Feature-Flags/loli-sdk"
   },
+  "homepage": "https://www.lolifeatureflags.com/reference/sdk/",
   "publishConfig": {
     "access": "public"
   },
